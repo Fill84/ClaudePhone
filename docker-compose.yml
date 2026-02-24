@@ -1,5 +1,5 @@
 services:
-  voice-agent:
+  ClaudePhone:
     build: .
     container_name: ClaudePhone
     restart: unless-stopped
