@@ -125,7 +125,11 @@ class VoiceCall(pj.Call):
             for i, mi in enumerate(ci.media):
                 if mi.type == pj.PJMEDIA_TYPE_AUDIO:
                     if mi.status == pj.PJSUA_CALL_MEDIA_ACTIVE:
-                        logger.info("Audio media active (slot %d)", i)
+                        aud_med = self.getAudioMedia(i)
+                        logger.info(
+                            "Audio media active (slot %d, conf_port=%d)",
+                            i, aud_med.getPortInfo().portId if aud_med else -1
+                        )
                     else:
                         logger.info("Audio media status: %d (slot %d)", mi.status, i)
         except Exception as e:
@@ -409,6 +413,16 @@ class VoiceCall(pj.Call):
             silence_cycles = 0
 
             while self.call_active:
+                # Log RTP stats before recording for diagnostics
+                try:
+                    si = self.getStreamStat(0)
+                    logger.info(
+                        "RTP stats: RX=%d pkts, TX=%d pkts",
+                        si.rtcp.rxStat.pkt, si.rtcp.txStat.pkt
+                    )
+                except Exception:
+                    pass
+
                 # Fixed-duration recording (6s)
                 # VAD recorder's rapid port create/destroy breaks PJSIP conference bridge.
                 # Use single long recording instead; faster-whisper has built-in VAD.
@@ -683,6 +697,21 @@ class VoiceCall(pj.Call):
                 return None
 
             if Path(record_file).exists() and Path(record_file).stat().st_size > 1000:
+                # Diagnostic: log audio levels to detect silent recordings
+                try:
+                    import struct
+                    with wave.open(record_file, "rb") as wf:
+                        frames = wf.readframes(wf.getnframes())
+                        if frames:
+                            samples = struct.unpack(f"<{len(frames)//2}h", frames)
+                            max_amp = max(abs(s) for s in samples)
+                            logger.info(
+                                "Recording: %d bytes, max_amplitude=%d (%s)",
+                                len(frames), max_amp,
+                                "HAS AUDIO" if max_amp > 100 else "SILENT - no RTP received"
+                            )
+                except Exception:
+                    pass
                 return record_file
             return None
 

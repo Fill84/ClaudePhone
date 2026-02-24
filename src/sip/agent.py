@@ -81,7 +81,7 @@ class SIPVoiceAgent:
 
         # Endpoint config
         ep_cfg = pj.EpConfig()
-        ep_cfg.logConfig.level = 3
+        ep_cfg.logConfig.level = 5
         ep_cfg.logConfig.consoleLevel = 3
         ep_cfg.logConfig.filename = "/app/logs/pjsip.log"
 
