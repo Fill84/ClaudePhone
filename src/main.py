@@ -157,8 +157,26 @@ def main():
     from .dashboard.app import set_agent
     set_agent(agent)
 
+    # Step 13: Register plugin routes on the Flask app
+    _register_plugin_routes(plugin_manager)
+
     logger.info("All components initialized, starting SIP agent...")
     agent.start()  # Blocks here
+
+
+def _register_plugin_routes(pm):
+    """Register plugin-provided Flask routes on the running app."""
+    try:
+        from .dashboard.app import get_flask_app
+        from .dashboard.api_plugins import register_plugin_routes
+        app = get_flask_app()
+        if app is None:
+            logger.warning("Flask app not available for plugin route registration")
+            return
+        register_plugin_routes(app, pm)
+        logger.info("Plugin route registration completed")
+    except Exception as e:
+        logger.error("Plugin route registration failed: %s", e, exc_info=True)
 
 
 def _start_dashboard_early(db, port):

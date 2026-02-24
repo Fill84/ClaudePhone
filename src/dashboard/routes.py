@@ -16,6 +16,8 @@ def index():
 @main_bp.route("/<path:path>")
 def catch_all(path):
     """Serve index.html for all non-API routes (client-side routing)."""
+    if path.startswith("api/"):
+        return jsonify({"error": "Not found"}), 404
     return render_template("index.html")
 
 
