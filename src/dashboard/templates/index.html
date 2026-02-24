@@ -512,13 +512,27 @@
         }
 
         @keyframes toastIn {
-            from { opacity: 0; transform: translateX(40px); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         @keyframes toastOut {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(40px); }
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateX(40px);
+            }
         }
     </style>
 </head>
@@ -808,7 +822,8 @@
         <!-- ============ PLUGIN PAGE (dynamic) ============ -->
         <div class="tab-panel" id="panel-plugin-page">
             <div style="margin-bottom:12px">
-                <a href="/plugins" onclick="event.preventDefault();navigate('/plugins')" style="color:#38bdf8;text-decoration:none;font-size:0.85rem">&larr; Back to Plugins</a>
+                <a href="/plugins" onclick="event.preventDefault();navigate('/plugins')"
+                    style="color:#38bdf8;text-decoration:none;font-size:0.85rem">&larr; Back to Plugins</a>
             </div>
             <div id="plugin-page-content">Loading...</div>
         </div>
@@ -965,7 +980,13 @@
                     container.innerHTML = `<div class="card"><h3>Error</h3><p style="color:#ef4444">${esc(d.error)}</p></div>`;
                     return;
                 }
+                // Insert HTML and execute any <script> tags
                 container.innerHTML = `<div class="card"><h3>${esc(d.title)}</h3>${d.html}</div>`;
+                container.querySelectorAll('script').forEach(old => {
+                    const s = document.createElement('script');
+                    s.textContent = old.textContent;
+                    old.replaceWith(s);
+                });
             } catch (e) {
                 container.innerHTML = `<div class="card"><h3>Error</h3><p style="color:#ef4444">Failed to load page: ${esc(e)}</p></div>`;
             }
@@ -1563,9 +1584,9 @@
                         </div>
                         ${p.description ? `<div style="color:#94a3b8;font-size:0.85rem;margin-top:6px">${esc(p.description)}</div>` : ''}
                         ${(p.pages && p.pages.length) ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${p.pages.map(pg =>
-                            `<a href="/plugins/${esc(p.name)}/${esc(pg.id)}" onclick="event.preventDefault();navigate('/plugins/${esc(p.name)}/${esc(pg.id)}')"
+                        `<a href="/plugins/${esc(p.name)}/${esc(pg.id)}" onclick="event.preventDefault();navigate('/plugins/${esc(p.name)}/${esc(pg.id)}')"
                                 class="btn btn-sm" style="text-decoration:none;display:inline-block">${pg.icon ? esc(pg.icon) + ' ' : ''}${esc(pg.title)}</a>`
-                        ).join('')}</div>` : ''}
+                    ).join('')}</div>` : ''}
                         ${configHtml}
                     </div>`;
                 }).join('');
@@ -1581,7 +1602,8 @@
                 const r = await fetch(`/api/plugins/${name}/${action}`, { method: 'POST' });
                 const d = await r.json();
                 if (d.error) toast(d.error, 'error');
-                else toast(`Plugin ${enable ? 'enabled' : 'disabled'}`, 'success');
+                else if (d.success) toast(`Plugin ${name} ${enable ? 'enabled' : 'disabled'}`, 'success');
+                else toast(`Could not ${enable ? 'enable' : 'disable'} ${name} plugin.`, 'error');
                 loadPlugins();
             } catch (e) { toast('Failed: ' + e, 'error'); }
         }

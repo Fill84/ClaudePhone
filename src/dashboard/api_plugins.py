@@ -81,10 +81,22 @@ def enable_plugin(name):
     if not pm:
         return jsonify({"error": "Plugin manager not available"}), 503
 
+    plugin = pm.plugins.get(name)
+    if not plugin:
+        return jsonify({"error": "Plugin not found"}), 404
+
     success = pm.enable_plugin(name)
     if success:
         _refresh_router(pm)
-    return jsonify({"success": success})
+        return jsonify({"success": True})
+
+    # Determine why enabling failed
+    if not pm._check_configured(plugin):
+        required = [f.label for f in plugin.config_schema if f.required]
+        return jsonify({
+            "error": f"Configure required fields first: {', '.join(required)}",
+        })
+    return jsonify({"error": "Connection test failed. Check plugin settings."})
 
 
 @plugins_bp.route("/<name>/disable", methods=["POST"])
