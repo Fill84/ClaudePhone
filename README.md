@@ -1,4 +1,4 @@
-# ClaudePhone2
+# ClaudePhone
 
 A self-hosted, natural SIP voice assistant that answers phone calls with AI. Built with PJSIP, Whisper STT, Piper TTS, and Ollama.
 
@@ -86,7 +86,7 @@ The web dashboard (port 8080) provides:
 
 ## Plugin System
 
-ClaudePhone2 has a plugin system for adding new voice capabilities. Plugins can:
+ClaudePhone has a plugin system for adding new voice capabilities. Plugins can:
 
 - Add custom voice commands (keywords) in Dutch and English
 - Integrate with external services
