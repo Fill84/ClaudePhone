@@ -118,36 +118,56 @@ def _generate_init_py(plugin_filename: str) -> str:
     return f"from .{module_stem} import *\n"
 
 
-def _install_from_dir(source_dir: Path, pm) -> list:
-    """Install a plugin from a package directory into a random folder."""
+def _install_from_dir(source_dir: Path, pm) -> tuple:
+    """Install a plugin from a package directory into a random folder.
+
+    Returns (installed_names, errors).
+    """
     random_name = f"plugin_{uuid.uuid4().hex[:8]}"
     dest_dir = PLUGINS_DIR / random_name
     if dest_dir.exists():
         shutil.rmtree(str(dest_dir))
     shutil.copytree(str(source_dir), str(dest_dir))
+
+    # Validate before loading
+    valid, errors = pm.validate_plugin(dest_dir)
+    if not valid:
+        shutil.rmtree(str(dest_dir), ignore_errors=True)
+        return [], errors
+
     name = pm.load_new_plugin(dest_dir)
     if name:
         _refresh_router(pm)
-        return [name]
+        return [name], []
     # Cleanup on failure
     shutil.rmtree(str(dest_dir), ignore_errors=True)
-    return []
+    return [], ["Plugin failed to load after validation"]
 
 
-def _install_from_file(source_file: Path, pm) -> list:
-    """Wrap a single .py plugin file in a package directory and install."""
+def _install_from_file(source_file: Path, pm) -> tuple:
+    """Wrap a single .py plugin file in a package directory and install.
+
+    Returns (installed_names, errors).
+    """
     random_name = f"plugin_{uuid.uuid4().hex[:8]}"
     dest_dir = PLUGINS_DIR / random_name
     dest_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(str(source_file), str(dest_dir / source_file.name))
     (dest_dir / "__init__.py").write_text(_generate_init_py(source_file.name))
+
+    # Validate before loading
+    valid, errors = pm.validate_plugin(dest_dir)
+    if not valid:
+        shutil.rmtree(str(dest_dir), ignore_errors=True)
+        return [], errors
+
     name = pm.load_new_plugin(dest_dir)
     if name:
         _refresh_router(pm)
-        return [name]
+        return [name], []
     # Cleanup on failure
     shutil.rmtree(str(dest_dir), ignore_errors=True)
-    return []
+    return [], ["Plugin failed to load after validation"]
 
 
 @plugins_bp.route("/install", methods=["POST"])
@@ -198,31 +218,46 @@ def install_plugin():
             root = extracted[0]
 
             installed = []
+            validation_errors = []
 
             # Check root for plugin package directories or .py files
             for f in root.iterdir():
                 if f.is_dir() and (f / "__init__.py").exists() and not f.name.startswith("_"):
-                    installed.extend(_install_from_dir(f, pm))
-                    if installed:
+                    names, errors = _install_from_dir(f, pm)
+                    installed.extend(names)
+                    validation_errors.extend(errors)
+                    if installed or errors:
                         break
                 elif f.is_file() and f.suffix == ".py" and not f.name.startswith("_"):
-                    installed.extend(_install_from_file(f, pm))
-                    if installed:
+                    names, errors = _install_from_file(f, pm)
+                    installed.extend(names)
+                    validation_errors.extend(errors)
+                    if installed or errors:
                         break
 
             # Fallback: check src/plugins/ in repo
-            if not installed:
+            if not installed and not validation_errors:
                 src_plugins = root / "src" / "plugins"
                 if src_plugins.is_dir():
                     for f in src_plugins.iterdir():
                         if f.is_dir() and (f / "__init__.py").exists() and not f.name.startswith("_"):
-                            installed.extend(_install_from_dir(f, pm))
-                            if installed:
+                            names, errors = _install_from_dir(f, pm)
+                            installed.extend(names)
+                            validation_errors.extend(errors)
+                            if installed or errors:
                                 break
                         elif f.is_file() and f.suffix == ".py" and not f.name.startswith("_"):
-                            installed.extend(_install_from_file(f, pm))
-                            if installed:
+                            names, errors = _install_from_file(f, pm)
+                            installed.extend(names)
+                            validation_errors.extend(errors)
+                            if installed or errors:
                                 break
+
+            if validation_errors:
+                return jsonify({
+                    "error": "Plugin validation failed",
+                    "warnings": validation_errors,
+                }), 400
 
             if not installed:
                 return jsonify({"error": "No valid plugin found in repository"}), 400

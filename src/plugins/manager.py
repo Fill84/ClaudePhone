@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .base import PluginBase
+from .base import PluginBase, PluginMeta
 from .context import PluginContext
 
 logger = logging.getLogger(__name__)
@@ -181,6 +181,85 @@ class PluginManager:
 
         # No env_key → always enabled
         return True
+
+    def validate_plugin(self, plugin_dir: Path) -> tuple:
+        """Validate a plugin directory before installation.
+
+        Returns (True, []) if valid, or (False, [error_messages]) if invalid.
+        """
+        errors = []
+
+        # Check directory structure
+        init_file = plugin_dir / "__init__.py"
+        if not init_file.exists():
+            return False, ["Missing __init__.py in plugin directory"]
+
+        # Try to load the module
+        module_name = f"_validate_.{plugin_dir.name}"
+        try:
+            spec = importlib.util.spec_from_file_location(
+                module_name, init_file,
+                submodule_search_locations=[str(plugin_dir)],
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        except Exception as e:
+            return False, [f"Failed to load plugin module: {e}"]
+        finally:
+            # Clean up temp module
+            sys.modules.pop(module_name, None)
+
+        # Find PluginBase subclass
+        plugin_cls = self._find_plugin_class(module)
+        if plugin_cls is None:
+            return False, ["No PluginBase subclass found in plugin"]
+
+        # Try to instantiate
+        try:
+            plugin = plugin_cls()
+        except Exception as e:
+            return False, [f"Failed to instantiate plugin: {e}"]
+
+        # Validate meta
+        try:
+            meta = plugin.meta
+            if not isinstance(meta, PluginMeta):
+                errors.append("meta must return a PluginMeta instance")
+            else:
+                if not meta.name or not meta.name.strip():
+                    errors.append("meta.name is required")
+                if not meta.display_name or not meta.display_name.strip():
+                    errors.append("meta.display_name is required")
+        except Exception as e:
+            errors.append(f"meta property raised an error: {e}")
+
+        # Validate keywords
+        try:
+            keywords = plugin.keywords
+            if not isinstance(keywords, dict):
+                errors.append("keywords must return a dict")
+            elif not keywords:
+                errors.append("keywords must contain at least one language")
+            else:
+                has_keywords = any(
+                    isinstance(v, list) and len(v) > 0
+                    for v in keywords.values()
+                )
+                if not has_keywords:
+                    errors.append(
+                        "keywords must contain at least one language "
+                        "with at least one keyword"
+                    )
+        except Exception as e:
+            errors.append(f"keywords property raised an error: {e}")
+
+        # Validate handle method
+        if not callable(getattr(plugin, "handle", None)):
+            errors.append("handle(text, language) method is required")
+
+        if errors:
+            return False, errors
+        return True, []
 
     def load_new_plugin(self, file_path: Path) -> Optional[str]:
         """Load a single new plugin package at runtime.
