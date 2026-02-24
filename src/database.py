@@ -192,15 +192,6 @@ class Database:
         if hasattr(self._local, "conn") and self._local.conn is not None:
             try:
                 self._local.conn.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing database connection: %s", e)
             self._local.conn = None
-
-    def close_all(self) -> None:
-        """Close the database connection for the current thread.
-
-        Note: threading.local() only gives access to the current thread's data.
-        Other threads' connections will be closed when those threads end or
-        call close() explicitly.
-        """
-        self.close()

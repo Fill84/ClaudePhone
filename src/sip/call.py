@@ -303,7 +303,7 @@ class VoiceCall(pj.Call):
                 del player
             except Exception:
                 pass
-            time.sleep(0.1)
+            time.sleep(0.2)
 
     def _speak(self, text: str, language: str = "en") -> bool:
         """Generate TTS and play to caller."""
@@ -420,21 +420,15 @@ class VoiceCall(pj.Call):
     def _default_greeting(self, name: str, assistant_name: str, plugins: str, language: str) -> str:
         """Generate a default greeting when no template is configured."""
         if language == "nl":
-            parts = [f"Hoi {name}" if name else "Hoi"]
-            parts.append(f"ik ben {assistant_name}.")
+            intro = f"Hoi {name}, ik ben {assistant_name}." if name else f"Hoi, ik ben {assistant_name}."
             if plugins:
-                parts.append(f"Ik kan je helpen met {plugins}, of stel gewoon een vraag.")
-            else:
-                parts.append("Stel gerust een vraag.")
-            return ", ".join(parts[:2]) + " " + " ".join(parts[2:])
+                return f"{intro} Ik kan je helpen met {plugins}, of stel gewoon een vraag."
+            return f"{intro} Stel gerust een vraag."
         else:
-            parts = [f"Hi {name}" if name else "Hi"]
-            parts.append(f"I'm {assistant_name}.")
+            intro = f"Hi {name}, I'm {assistant_name}." if name else f"Hi, I'm {assistant_name}."
             if plugins:
-                parts.append(f"I can help with {plugins}, or just ask a question.")
-            else:
-                parts.append("Feel free to ask me anything.")
-            return ", ".join(parts[:2]) + " " + " ".join(parts[2:])
+                return f"{intro} I can help with {plugins}, or just ask a question."
+            return f"{intro} Feel free to ask me anything."
 
     def _speak_goodbye(self, language: str = "en") -> bool:
         """Speak a natural, time-aware goodbye with caller name."""
@@ -806,6 +800,8 @@ class VoiceCall(pj.Call):
                     "I'll call you back as soon as I have the answer!"
                 )
                 self._speak(cb_msg, language)
+                producer.join(timeout=5)
+                return  # Don't play streaming response after callback announcement
             else:
                 slow_msg = (
                     "Het duurt even, nog even geduld..."

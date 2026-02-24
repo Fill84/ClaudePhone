@@ -74,7 +74,7 @@ class OllamaClient:
                 f"{self.base_url}/api/generate",
                 json={
                     "model": self.model,
-                    "prompt": "",
+                    "prompt": "hi",
                     "keep_alive": "10m",
                 },
                 timeout=300,
@@ -195,6 +195,8 @@ class OllamaClient:
 
         try:
             response = requests.post(
+                # Callbacks are asynchronous (caller isn't waiting on the line),
+                # so allow 4x the normal timeout for model processing.
                 url, json=payload, timeout=timeout or (self.timeout * 4)
             )
             if response.status_code == 200:
