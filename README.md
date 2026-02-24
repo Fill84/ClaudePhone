@@ -35,7 +35,7 @@ Phone Call → FreePBX/SIP → PJSIP → VAD → Whisper STT → Ollama LLM → 
 ### 1. Clone and configure
 
 ```bash
-git clone [https://github.com/yourusername/claudephone2](https://github.com/Fill84/ClaudePhone.git)
+git clone https://github.com/Fill84/ClaudePhone.git
 cd ClaudePhone
 cp .env.example .env
 ```
