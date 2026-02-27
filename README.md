@@ -1,4 +1,4 @@
-# ClaudePhone
+# EntroPhone
 
 A self-hosted, natural SIP voice assistant that answers phone calls with AI. Built with PJSIP, Whisper STT, Piper TTS, and Ollama.
 
@@ -35,8 +35,8 @@ Phone Call → FreePBX/SIP → PJSIP → VAD → Whisper STT → Ollama LLM → 
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/Fill84/ClaudePhone.git
-cd ClaudePhone
+git clone https://github.com/Fill84/EntroPhone.git
+cd EntroPhone
 cp .env.example .env
 ```
 
@@ -86,7 +86,7 @@ The web dashboard (port 8080) provides:
 
 ## Plugin System
 
-ClaudePhone has a plugin system for adding new voice capabilities. Plugins can:
+EntroPhone has a plugin system for adding new voice capabilities. Plugins can:
 
 - Add custom voice commands (keywords) in Dutch and English
 - Integrate with external services
